@@ -1,0 +1,937 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>株の期間チャート</title>
+<style>
+:root{--bg:#f5f6f8;--card:#fff;--ink:#1c2530;--sub:#5f6b7a;--line:#dde2e8;--accent:#1f6feb;--ok:#12805c;--warn:#b25e09;--bad:#c5362c;--chip:#eef1f5;--badbg:#fdecea;--warnbg:#fff4e2;--okbg:#e6f5ee;--okd:#0e6b4d}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#11161c;--card:#1a2129;--ink:#e6ebf1;--sub:#9aa6b4;--line:#2b3542;--accent:#6ea8ff;--ok:#4cc79a;--warn:#e6a94f;--bad:#f0857c;--chip:#242d38;--badbg:#3a2220;--warnbg:#3a2e1a;--okbg:#17302a;--okd:#4cc79a}}
+:root[data-theme="dark"]{--bg:#11161c;--card:#1a2129;--ink:#e6ebf1;--sub:#9aa6b4;--line:#2b3542;--accent:#6ea8ff;--ok:#4cc79a;--warn:#e6a94f;--bad:#f0857c;--chip:#242d38;--badbg:#3a2220;--warnbg:#3a2e1a;--okbg:#17302a;--okd:#4cc79a}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.65 -apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif}
+main{max-width:1280px;margin:0 auto;padding:16px}
+.head{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
+h1{font-size:21px;margin:6px 0 0}
+h2{font-size:16px;margin:0 0 10px}
+.sub{color:var(--sub);font-size:13px}
+.layout{display:grid;grid-template-columns:minmax(300px,360px) minmax(0,1fr);gap:0 16px;align-items:start}
+.layout>*{min-width:0}
+@media (max-width:900px){.layout{grid-template-columns:minmax(0,1fr)}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin:12px 0}
+label{display:block;font-size:12px;color:var(--sub);margin-top:8px}
+label.chk{display:flex;gap:8px;align-items:flex-start;font-size:13px;color:var(--ink)}
+label.chk input{width:auto;margin-top:5px;flex:none}
+input,select,textarea{width:100%;font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink)}
+textarea{min-height:92px;resize:vertical;display:block}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 12px}
+button{font:inherit;font-size:14px;padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}
+button.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+:root[data-theme="dark"] button.pri{color:#0b1220}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) button.pri{color:#0b1220}}
+button.sm{padding:4px 10px;font-size:13px}
+button.on{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px}
+.drop{border:2px dashed var(--line);border-radius:10px;padding:14px;text-align:center;color:var(--sub);font-size:13px}
+.drop.over{border-color:var(--accent);color:var(--ink)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.badge{display:inline-block;font-size:12px;padding:1px 9px;border-radius:999px;background:var(--chip);color:var(--sub);white-space:nowrap}
+.badge.bad{background:var(--badbg);color:var(--bad)}.badge.warn{background:var(--warnbg);color:var(--warn)}.badge.ok{background:var(--okbg);color:var(--ok)}
+.msg{font-size:13px;margin-top:8px}
+.msg div{margin-top:2px;overflow-wrap:anywhere}
+.err{color:var(--bad)}
+.banner{background:var(--warnbg);color:var(--warn);border:1px solid var(--warn);border-radius:10px;padding:8px 12px;margin:12px 0;font-size:14px;font-weight:600}
+.note{background:var(--chip);border-radius:10px;padding:8px 12px;font-size:13px;margin-top:10px}
+.note ul{margin:0;padding-left:1.2em}
+.legend{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 6px}
+.legend button{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;font-size:13px;border-radius:999px;max-width:100%}
+.legend button span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.legend button[aria-pressed="false"]{opacity:.45;text-decoration:line-through}
+.legend svg{flex:none}
+.chartwrap{position:relative;height:380px}
+.chartwrap.small{height:280px}
+@media (max-width:900px){.chartwrap{height:300px}.chartwrap.small{height:240px}}
+.chartwrap canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:pan-y;display:block}
+.tip{position:absolute;z-index:2;pointer-events:none;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:12px;line-height:1.5;box-shadow:0 4px 14px rgba(0,0,0,.18);max-width:290px;display:none}
+.tip b{display:block;margin-bottom:2px}
+.tip .tr{display:flex;gap:6px;align-items:center;justify-content:space-between;white-space:nowrap}
+.tip .tr i{flex:none;width:10px;height:10px;border-radius:50%;display:inline-block}
+.tip .tr span{overflow:hidden;text-overflow:ellipsis;flex:1}
+.tip .tr em{font-style:normal;font-variant-numeric:tabular-nums;font-weight:600}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+.tiles div{background:var(--chip);border-radius:10px;padding:10px;min-width:0}
+.tiles span{display:block;font-size:12px;color:var(--sub)}
+.tiles b{display:block;font-size:18px;overflow-wrap:anywhere;line-height:1.35}
+.tiles small{display:block;font-size:12px;color:var(--sub);overflow-wrap:anywhere}
+.plus{color:var(--ok)}.minus{color:var(--bad)}
+:root[data-pl="jp"] .plus{color:var(--bad)}:root[data-pl="jp"] .minus{color:var(--okd)}
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px;font-variant-numeric:tabular-nums}
+th,td{padding:6px 8px;border-top:1px solid var(--line);text-align:right;vertical-align:top;white-space:nowrap}
+th{font-size:12px;color:var(--sub);font-weight:600;border-top:0}
+th:first-child,td:first-child{text-align:left;white-space:normal}
+td small{display:block;color:var(--sub);font-size:11px}
+tr.total td{font-weight:700;border-top:2px solid var(--ink)}
+@media (max-width:640px){
+  thead{display:none}
+  table,tbody,tr,td{display:block;width:100%}
+  tr{border-top:1px solid var(--line);padding:8px 0}
+  tr.total{border-top:2px solid var(--ink)}
+  td,tr.total td{border:0;padding:1px 0;display:flex;justify-content:space-between;gap:10px;white-space:normal;text-align:right}
+  td::before{content:attr(data-l);color:var(--sub);font-size:12px;text-align:left;flex:none}
+  td:first-child{font-weight:700;font-size:14px}
+  td:first-child::before{content:none}
+  td small{display:inline;margin-left:6px}
+}
+details summary{cursor:pointer;font-size:13px;color:var(--sub)}
+details .sub{margin-top:6px}
+code{background:var(--chip);border-radius:4px;padding:0 4px;font-size:12px;overflow-wrap:anywhere}
+.empty{color:var(--sub);text-align:center;padding:28px 0}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:999px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none;max-width:calc(100vw - 32px);z-index:5}
+.toast.on{opacity:1}
+footer{color:var(--sub);font-size:12px;margin:18px 0 30px}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main>
+<div class="head">
+  <h1>株の期間チャート</h1>
+  <div class="row" style="margin-top:0">
+    <button class="sm" id="plBtn" title="損益の数字の色を切りかえます（グラフの線の色は変わりません）">損益の色：上げ緑・下げ赤</button>
+    <button class="sm" id="themeBtn" title="画面の配色を切りかえます">配色：自動</button>
+  </div>
+</div>
+<div class="sub">自分で用意した株価の CSV を読み込み、指定した期間の日足（終値）を重ねて表示して、「全部買っていたら」の損益を計算します。登録不要・無料。データはこの端末の中だけで扱い、どこにも送りません。数字を見せるだけの道具で、売買の助言・推奨ではありません。</div>
+
+<div class="layout">
+<div class="side">
+
+<div class="card" id="dataCard">
+<h2>1. 株価の CSV を読み込む</h2>
+<div class="drop" id="drop">ここに CSV ファイルを置く（複数まとめて可）<br>
+<button class="pri" id="fileBtn" style="margin-top:8px">ファイルを選ぶ</button></div>
+<input type="file" id="file" accept=".csv,.tsv,.txt,text/csv" multiple hidden>
+<div class="row">
+  <button id="sampleBtn">サンプルで試す（作りものの数字）</button>
+  <button id="clearBtn">読み込んだデータを消す</button>
+</div>
+<div class="msg" id="dataMsg"></div>
+<label class="chk"><input type="checkbox" id="keep"><span>読み込んだ CSV の中身も、この端末に覚えさせる（初めは「覚えさせない」。入れなければ、ページを閉じると中身は消えます）</span></label>
+<details style="margin-top:10px">
+<summary>読み込める CSV の形</summary>
+<div class="sub"><b>縦持ち</b>：1行目が見出しで、<code>date,code,close</code>（日本語の「日付・コード・終値」でも可。銘柄名の列 <code>name</code> があれば表示に使います。「調整後終値」の列があれば、終値より優先して使います）。コードの列が無いファイルは、ファイル名のコード（例：<code>1234.csv</code>）を使います。</div>
+<div class="sub"><b>横持ち</b>：1行目に銘柄コード、その下に銘柄ごとの「日付・終値」の2列が横に並ぶ形（Google スプレッドシートを CSV で保存した形）。1列目が日付で、2列目からが銘柄ごとの終値、という形も読めます。</div>
+<div class="sub">日付は <code>2026-10-09</code>・<code>2026/10/9</code>・<code>20261009</code> のどれでも（時刻つきでも可）。文字コードは UTF-8 と Shift_JIS のどちらでも読めます。</div>
+</details>
+</div>
+
+<div class="card">
+<h2>2. 銘柄コード</h2>
+<div class="sub">そのまま貼りつけてください。改行・カンマ・空白のどれで区切ってもよく、「1234.T」「TSE:1234」「会社名 1234」のような書き方からも4けたのコードを拾います。</div>
+<textarea id="codes" placeholder="例：9Z01, 9Z02&#10;9Z03 9Z04" aria-label="銘柄コード" spellcheck="false"></textarea>
+<div class="row" style="margin-top:8px"><button class="sm" id="allCodesBtn">CSV にあるコードをすべて入れる</button></div>
+<div class="chips" id="chips"></div>
+<div class="msg" id="codeMsg"></div>
+</div>
+
+<div class="card">
+<h2>3. 表示する期間</h2>
+<div class="grid">
+<label>開始日<input type="date" id="start"></label>
+<label>終了日<input type="date" id="end"></label>
+</div>
+<div class="row" id="presets">
+  <button class="sm" data-p="1m">1か月</button>
+  <button class="sm" data-p="3m">3か月</button>
+  <button class="sm" data-p="6m">6か月</button>
+  <button class="sm" data-p="1y">1年</button>
+  <button class="sm" data-p="ytd">年初から</button>
+  <button class="sm" data-p="all">全期間</button>
+</div>
+<div class="sub" style="margin-top:6px">早選びは、読み込んだデータのいちばん新しい日から数えます。</div>
+<div class="msg err" id="periodMsg"></div>
+</div>
+
+<div class="card">
+<h2>4. 買い方（損益の計算）</h2>
+<div class="row" style="margin-top:0">
+  <button class="sm" id="buyShares">各銘柄 同じ株数ずつ</button>
+  <button class="sm" id="buyAmount">各銘柄 同じ金額ずつ</button>
+</div>
+<div id="sharesBox"><label>1銘柄あたりの株数<input type="number" id="shares" min="1" step="1" inputmode="numeric"></label></div>
+<div id="amountBox">
+<label>1銘柄あたりの金額（円）<input type="number" id="amount" min="1" step="1" inputmode="numeric"></label>
+<label>端数の扱い<select id="round"><option value="frac">株数を小数で計算する（金額ちょうど）</option><option value="lot">100株単位に切り捨てる（買えない銘柄は0株）</option></select></label>
+</div>
+<div class="sub" style="margin-top:8px">期間の最初の取引日の終値で買い、最後の取引日の終値で評価します。</div>
+</div>
+
+</div>
+<div class="results">
+
+<div class="banner" id="sampleBanner" hidden>サンプル（作りものの数字）を表示しています。計算で作った数字で、実在の銘柄・株価ではありません。</div>
+
+<div class="card" id="emptyCard"><div class="empty" id="emptyText">株価の CSV を読み込み、銘柄コードを入れると、ここにグラフと損益が出ます。<br>まず動きを見たいときは「サンプルで試す」を押してください。</div></div>
+
+<div id="resultBox" hidden>
+<div class="card">
+<h2 id="h2over">重ねたグラフ</h2>
+<div class="row" style="margin-top:0">
+  <button class="sm" id="modeIndex">最初の日を100とした動き</button>
+  <button class="sm" id="modeRaw">株価そのまま</button>
+</div>
+<div class="legend" id="legend"></div>
+<div class="chartwrap" id="wrap1"><canvas id="cv1" role="img" aria-label="銘柄ごとの終値の線グラフ"></canvas><div class="tip" id="tip1"></div></div>
+<div class="sub" id="overNote"></div>
+<div class="row"><button class="sm" id="png1">このグラフを画像で保存</button></div>
+</div>
+
+<div class="card">
+<h2>合計の評価額（全銘柄を持っていた場合）</h2>
+<div class="chartwrap small" id="wrap2"><canvas id="cv2" role="img" aria-label="合計の評価額の線グラフ"></canvas><div class="tip" id="tip2"></div></div>
+<div class="sub">点線は買った額の合計です。</div>
+<div class="row"><button class="sm" id="png2">このグラフを画像で保存</button></div>
+</div>
+
+<div class="card">
+<h2>損益のまとめ</h2>
+<div class="sub" id="sumLead" style="margin-bottom:8px"></div>
+<div class="tiles" id="tiles"></div>
+<div class="note" id="alignNote" hidden></div>
+</div>
+
+<div class="card">
+<h2>銘柄ごとの損益</h2>
+<div class="tablewrap"><table id="tbl"></table></div>
+<div class="row"><button class="sm" id="csvBtn">この表を CSV で保存</button></div>
+</div>
+</div>
+
+<div class="card">
+<h2>計算の決まりと注意</h2>
+<div class="sub">
+<ul style="margin:0;padding-left:1.2em">
+<li>手数料・税金・配当は入れていません。</li>
+<li>株式分割があった銘柄は、読み込んだデータが分割の調整済みでなければ、正しい数字になりません。</li>
+<li>買う日は銘柄ごとに「期間の中の最初の取引日」、評価する日は「期間の中の最後の取引日」です（表に日付を出します）。</li>
+<li>取引日が欠けている日は、その銘柄の直前の終値で埋めて計算します。その銘柄の最初の日より前は埋めず、合計のグラフでは「買う前のお金（買う額）」としてそのまま数えます。</li>
+<li>「同じ金額ずつ」で小数の株数を選ぶと、実際には買えない端数の株数で計算します。</li>
+<li>この道具は数字を見せるだけです。売買の助言・推奨ではありません。判断はご自身で行ってください。</li>
+</ul>
+</div>
+</div>
+
+</div>
+</div>
+
+<footer>株の期間チャート ／ ForgeNexusWorks。株価データは入っていません。読み込んだ CSV は外に送られません。</footer>
+</main>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+'use strict';
+
+/* ================= 計算の部分（画面に触らない） ================= */
+var Core=(function(){
+  function nk(s){s=String(s==null?'':s);return (s.normalize?s.normalize('NFKC'):s).trim()}
+  var CODE='[1-9][0-9A-Z][0-9][0-9A-Z]';
+
+  // 文の中から4けたの銘柄コードを拾う（重複は1つに。出てきた順）
+  function extractCodes(text){
+    var s=nk(text).toUpperCase(),re=new RegExp('(^|[^0-9A-Z])('+CODE+')(?![0-9A-Z])','g'),out=[],seen={},m;
+    while((m=re.exec(s))){if(!seen[m[2]]){seen[m[2]]=1;out.push(m[2])}}
+    return out;
+  }
+  // CSV のコードのセル（1234／1234.T／TSE:1234／12340 など）を4けたにそろえる
+  function normCode(cell){
+    var s=nk(cell).toUpperCase();
+    if(!s)return null;
+    if(new RegExp('^'+CODE+'$').test(s))return s;
+    if(new RegExp('^'+CODE+'0$').test(s))return s.slice(0,4);
+    if(/^[1-9][0-9]{3}\.0+$/.test(s))return s.slice(0,4);
+    var a=extractCodes(s);
+    return a.length?a[0]:null;
+  }
+  function pad(n){return n<10?'0'+n:''+n}
+  function ymd(y,m,d){
+    if(m<1||m>12||d<1||d>31||y<1900||y>2200)return null;
+    var t=new Date(Date.UTC(y,m-1,d));
+    if(t.getUTCMonth()!==m-1||t.getUTCDate()!==d)return null;
+    return y+'-'+pad(m)+'-'+pad(d);
+  }
+  // 日付を YYYY-MM-DD にそろえる。時刻がついていても日付だけ使う
+  function parseDate(v,dmy){
+    var s=nk(v),m;
+    if(!s)return null;
+    if((m=/^(\d{4})\s*[-\/.年]\s*(\d{1,2})\s*[-\/.月]\s*(\d{1,2})(?!\d)/.exec(s)))return ymd(+m[1],+m[2],+m[3]);
+    if((m=/^(\d{4})(\d{2})(\d{2})(?!\d)/.exec(s)))return ymd(+m[1],+m[2],+m[3]);
+    if((m=/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?!\d)/.exec(s)))return dmy?ymd(+m[3],+m[2],+m[1]):ymd(+m[3],+m[1],+m[2]);
+    return null;
+  }
+  function parseNum(v){
+    var s=nk(v).replace(/[,\s¥\\円]/g,'');
+    if(!/^\d+(\.\d+)?$/.test(s))return null;
+    var n=parseFloat(s);
+    return isFinite(n)&&n>0?n:null;
+  }
+  // 文字コード：UTF-8 として読めなければ Shift_JIS で読む
+  function decode(buf){
+    var u=new Uint8Array(buf);
+    if(u.length>=2&&u[0]===0xFF&&u[1]===0xFE)return {text:new TextDecoder('utf-16le').decode(u.subarray(2)),enc:'UTF-16'};
+    if(u.length>=3&&u[0]===0xEF&&u[1]===0xBB&&u[2]===0xBF)u=u.subarray(3);
+    try{return {text:new TextDecoder('utf-8',{fatal:true}).decode(u),enc:'UTF-8'}}
+    catch(e){return {text:new TextDecoder('shift_jis').decode(u),enc:'Shift_JIS'}}
+  }
+  function parseCSV(text){
+    text=String(text).replace(/^﻿/,'');
+    var first=text.split(/\r?\n/,1)[0]||'',delim=',';
+    var c={',':0,'\t':0,';':0},q=false,i,ch;
+    for(i=0;i<first.length;i++){ch=first[i];if(ch==='"')q=!q;else if(!q&&c[ch]!==undefined)c[ch]++}
+    if(c['\t']>c[',']&&c['\t']>=c[';'])delim='\t';else if(c[';']>c[','])delim=';';
+    var rows=[],row=[],cell='',n=text.length;q=false;
+    for(i=0;i<n;i++){
+      ch=text[i];
+      if(q){
+        if(ch==='"'){if(text[i+1]==='"'){cell+='"';i++}else q=false}
+        else cell+=ch;
+      }else if(ch==='"')q=true;
+      else if(ch===delim){row.push(cell);cell=''}
+      else if(ch==='\n'||ch==='\r'){
+        if(ch==='\r'&&text[i+1]==='\n')i++;
+        row.push(cell);cell='';rows.push(row);row=[];
+      }else cell+=ch;
+    }
+    if(cell!==''||row.length){row.push(cell);rows.push(row)}
+    return rows.filter(function(r){for(var k=0;k<r.length;k++)if(r[k].trim()!=='')return true;return false});
+  }
+  function hkey(s){return nk(s).toLowerCase().replace(/[\s_\-()\[\]・.:：]/g,'')}
+  var H_DATE=['date','日付','年月日','日時','取引日','time','timestamp','datetime'];
+  var H_ADJ=['adjclose','adjustedclose','adjustmentclose','調整後終値','調整済終値','調整済み終値','終値調整','終値調整後','調整後'];
+  var H_CLOSE=['close','終値','closingprice','price','株価'];
+  var H_CODE=['code','コード','銘柄コード','証券コード','symbol','ticker','localcode'];
+  var H_NAME=['name','銘柄名','名称','会社名','銘柄名称','companyname','銘柄'];
+  function find(keys,list){for(var i=0;i<list.length;i++){var j=keys.indexOf(list[i]);if(j>=0)return j}return -1}
+
+  // 表（行の配列）を読み、recs=[日付,コード,終値] と names を返す
+  function parseTable(rows,fileName){
+    var out={format:'',recs:[],names:{},skipped:0,error:'',closeCol:''};
+    if(!rows.length){out.error='中身が空です';return out}
+    var dmy=false,r,j,m;
+    for(r=0;r<rows.length&&!dmy;r++)for(j=0;j<rows[r].length;j++){
+      m=/^\s*(\d{1,2})\/(\d{1,2})\/\d{4}/.exec(rows[r][j]);
+      if(m&&+m[1]>12){dmy=true;break}
+    }
+    var head=rows[0],keys=head.map(hkey);
+    var di=find(keys,H_DATE),ai=find(keys,H_ADJ),ci=ai>=0?ai:find(keys,H_CLOSE),ki=find(keys,H_CODE),ni=find(keys,H_NAME);
+    var startRow=1,d,c,v;
+    // 見出しなしの縦持ち（日付, コード, 終値 の順）
+    if(!(di>=0&&ci>=0)&&head.length>=3&&parseDate(head[0],dmy)&&normCode(head[1])&&parseNum(head[2])!==null&&!parseDate(head[1],dmy)){
+      di=0;ki=1;ci=2;ni=-1;startRow=0;
+    }
+    if(di>=0&&ci>=0){
+      out.format='long';out.closeCol=startRow?nk(head[ci]):'3列目';
+      var fileCode=null;
+      if(ki<0){
+        fileCode=extractCodes(String(fileName||'').replace(/\.[A-Za-z]+$/,''))[0]||null;
+        if(!fileCode){out.error='コードの列が無く、ファイル名からもコードを拾えませんでした（例：1234.csv のようにすると読めます）';return out}
+      }
+      for(r=startRow;r<rows.length;r++){
+        d=parseDate(rows[r][di],dmy);c=ki>=0?normCode(rows[r][ki]):fileCode;v=parseNum(rows[r][ci]);
+        if(d&&c&&v!==null){
+          out.recs.push([d,c,v]);
+          if(ni>=0&&rows[r][ni]&&rows[r][ni].trim())out.names[c]=rows[r][ni].trim();
+        }else out.skipped++;
+      }
+      return out;
+    }
+    // 横持ち：1行目のコードを探す
+    var cols=[];
+    for(j=0;j<head.length;j++){c=normCode(head[j]);if(c&&!parseDate(head[j],dmy))cols.push([j,c])}
+    if(!cols.length){out.error='形が分かりませんでした。1行目に「date・code・close」の見出しか、銘柄コードが必要です';return out}
+    // 見出しの次の行から、最初にデータのある行で形を決める
+    var pair=null,j0;
+    for(r=1;r<rows.length&&pair===null;r++)for(j=0;j<cols.length&&pair===null;j++){
+      j0=cols[j][0];
+      if(parseDate(rows[r][j0],dmy))pair=true;
+      else if(parseNum(rows[r][j0])!==null&&j0>0&&parseDate(rows[r][0],dmy))pair=false;
+    }
+    if(pair===null){out.error='1行目のコードの下に、日付と終値のデータが見つかりませんでした';return out}
+    if(pair){
+      out.format='wide';out.closeCol='コードの右の列';
+      var isCodeCol={};cols.forEach(function(x){isCodeCol[x[0]]=1});
+      cols.forEach(function(x){
+        var jj=x[0],code=x[1];
+        if(!isCodeCol[jj+1]&&head[jj+1]&&head[jj+1].trim())out.names[code]=head[jj+1].trim();
+        for(var rr=1;rr<rows.length;rr++){
+          var a=rows[rr][jj],b=rows[rr][jj+1];
+          if((a==null||a.trim()==='')&&(b==null||b.trim()===''))continue;
+          var dd=parseDate(a,dmy),vv=parseNum(b);
+          if(dd&&vv!==null)out.recs.push([dd,code,vv]);
+          else if(H_DATE.indexOf(hkey(a))<0)out.skipped++;
+        }
+      });
+    }else{
+      out.format='pivot';out.closeCol='コードの下の列';
+      for(r=1;r<rows.length;r++){
+        d=parseDate(rows[r][0],dmy);
+        if(!d){out.skipped++;continue}
+        for(j=0;j<cols.length;j++){
+          v=parseNum(rows[r][cols[j][0]]);
+          if(v!==null)out.recs.push([d,cols[j][1],v]);
+        }
+      }
+    }
+    return out;
+  }
+
+  // 生の入れ物 raw[code]={name,m:{日付:終値}} → 並べた形 fin[code]={name,d:[],v:[]}
+  function addRecs(raw,parsed){
+    var i,x;
+    for(i=0;i<parsed.recs.length;i++){
+      x=parsed.recs[i];
+      if(!raw[x[1]])raw[x[1]]={name:'',m:{}};
+      raw[x[1]].m[x[0]]=x[2];
+    }
+    for(var c in parsed.names)if(raw[c])raw[c].name=parsed.names[c];
+  }
+  function finalize(raw){
+    var fin={};
+    Object.keys(raw).sort().forEach(function(c){
+      var d=Object.keys(raw[c].m).sort();
+      fin[c]={name:raw[c].name||'',d:d,v:d.map(function(k){return raw[c].m[k]})};
+    });
+    return fin;
+  }
+
+  // 損益と合算の計算
+  function compute(fin,codes,start,end,opt){
+    var res={missing:[],outside:[],items:[],dates:[],total:[],cost:0,value:0,pl:0,rate:null};
+    var set={},i;
+    codes.forEach(function(c){
+      var s=fin[c];
+      if(!s||!s.d.length){res.missing.push(c);return}
+      var d=[],v=[];
+      for(var k=0;k<s.d.length;k++){var x=s.d[k];if(x<start)continue;if(x>end)break;d.push(x);v.push(s.v[k]);set[x]=1}
+      if(!d.length){res.outside.push(c);return}
+      res.items.push({code:c,name:s.name||'',d:d,v:v,buyDate:d[0],buyPx:v[0],endDate:d[d.length-1],endPx:v[v.length-1]});
+    });
+    var dates=Object.keys(set).sort(),n=dates.length;
+    res.dates=dates;
+    if(!n)return res;
+    var total=[];for(i=0;i<n;i++)total.push(0);
+    res.items.forEach(function(it){
+      var sh;
+      if(opt.buy==='amount')sh=opt.round==='lot'?Math.floor(opt.amount/it.buyPx/100)*100:opt.amount/it.buyPx;
+      else sh=opt.shares;
+      it.shares=sh;it.cost=sh*it.buyPx;it.value=sh*it.endPx;it.pl=it.value-it.cost;it.rate=it.endPx/it.buyPx-1;
+      var f=[],j=0,cur=null,gap=0;
+      for(var k=0;k<n;k++){
+        if(j<it.d.length&&it.d[j]===dates[k]){cur=it.v[j];j++}
+        else if(cur!==null&&dates[k]<it.endDate)gap++;
+        f.push(cur);
+        total[k]+=sh*(cur===null?it.buyPx:cur);
+      }
+      it.fill=f;it.gap=gap;
+      it.idx=f.map(function(x){return x===null?null:x/it.buyPx*100});
+      res.cost+=it.cost;res.value+=it.value;
+    });
+    res.total=total;res.pl=res.value-res.cost;
+    res.rate=res.cost>0?res.value/res.cost-1:null;
+    res.totalIdx=res.cost>0?total.map(function(t){return t/res.cost*100}):null;
+    var best=null,worst=null,up=0,down=0,flat=0;
+    res.items.forEach(function(it){
+      if(!best||it.rate>best.rate)best=it;
+      if(!worst||it.rate<worst.rate)worst=it;
+      if(it.endPx>it.buyPx)up++;else if(it.endPx<it.buyPx)down++;else flat++;
+    });
+    res.best=best;res.worst=worst;res.up=up;res.down=down;res.flat=flat;
+    var peak=total[0],pi=0,mdd=0,mp=0,mt=0,hi=0,lo=0;
+    for(i=0;i<n;i++){
+      if(total[i]>peak){peak=total[i];pi=i}
+      var dd=peak>0?total[i]/peak-1:0;
+      if(dd<mdd){mdd=dd;mp=pi;mt=i}
+      if(total[i]>total[hi])hi=i;
+      if(total[i]<total[lo])lo=i;
+    }
+    res.mdd={rate:mdd,peakDate:dates[mp],troughDate:dates[mt],peakVal:total[mp],troughVal:total[mt]};
+    res.hi={date:dates[hi],val:total[hi]};res.lo={date:dates[lo],val:total[lo]};
+    res.late=res.items.filter(function(it){return it.buyDate!==dates[0]});
+    res.early=res.items.filter(function(it){return it.endDate!==dates[n-1]});
+    res.gappy=res.items.filter(function(it){return it.gap>0});
+    return res;
+  }
+
+  // サンプル（作りものの数字）。決まった計算式で作るだけで、実在の株価ではない
+  function makeSample(){
+    var defs=[['9Z01','サンプルA（作りもの）',1200,30,101],['9Z02','サンプルB（作りもの）',3400,-20,202],['9Z03','サンプルC（作りもの）',560,60,303],['9Z04','サンプルD（作りもの）',8900,0,404],['9Z05','サンプルE（作りもの）',2150,-45,505]];
+    var days=[],t=Date.UTC(2025,9,1),e=Date.UTC(2026,8,30);
+    for(;t<=e;t+=86400000){var w=new Date(t).getUTCDay();if(w!==0&&w!==6)days.push(new Date(t).toISOString().slice(0,10))}
+    var recs=[],names={};
+    defs.forEach(function(df,k){
+      var p=df[2],s=df[4];names[df[0]]=df[1];
+      for(var i=0;i<days.length;i++){
+        s=(s*48271)%2147483647;
+        var r=s%3001-1500;
+        if(i>0)p=Math.max(1,p+Math.floor(p*(r+df[3])/100000));
+        if(k===2&&i>0&&s%23===0)continue;          // サンプルC：ところどころ日が欠ける
+        if(k===4&&days[i]<'2025-12-01')continue;   // サンプルE：途中の日から始まる
+        recs.push([days[i],df[0],p]);
+      }
+    });
+    return {format:'sample',recs:recs,names:names,skipped:0,error:''};
+  }
+  return {extractCodes:extractCodes,normCode:normCode,parseDate:parseDate,parseNum:parseNum,decode:decode,parseCSV:parseCSV,parseTable:parseTable,addRecs:addRecs,finalize:finalize,compute:compute,makeSample:makeSample};
+})();
+window.KabuChartCore=Core; // 検算用
+
+/* ================= 画面の部分 ================= */
+var KEY='kabu-kikan-chart-v1',KEY_DATA=KEY+'-data';
+var st={codes:'',start:'',end:'',preset:'1y',mode:'index',buy:'shares',shares:100,amount:1000000,round:'frac',theme:'auto',pl:'std',keep:false};
+var RAW={},FIN={},isSample=false,fileMsgs=[],hidden={},RES=null,charts={};
+var LIGHT=['#2a78d6','#eb6834','#1baf7a','#eda100','#e87ba4','#008300','#6250d6','#e34948'];
+var DARK=['#3987e5','#d95926','#199e70','#c98500','#d55181','#008300','#9085e9','#e66767'];
+var DASH=[[],[7,4],[2,3],[10,3,2,3]];
+
+function $(id){return document.getElementById(id)}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function toast(t){var e=$('toast');e.textContent=t;e.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(function(){e.classList.remove('on')},2600)}
+function today(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+function fmtInt(n){return Math.round(n).toLocaleString('ja-JP')}
+function fmtPx(n){return Number(n).toLocaleString('ja-JP',{maximumFractionDigits:1})}
+function fmtSh(n){return Number(n).toLocaleString('ja-JP',{maximumFractionDigits:2})}
+function fmtPct(x){if(x===null||!isFinite(x))return '—';return (x>0?'+':x<0?'−':'')+Math.abs(x*100).toFixed(2)+'%'}
+function fmtSigned(n){var r=Math.round(n);return (r>0?'+':r<0?'−':'')+Math.abs(r).toLocaleString('ja-JP')}
+function cls(x){return x>0?'plus':x<0?'minus':''}
+function sl(d){return d?d.replace(/-/g,'/'):''}
+function label(it){return it.name?it.code+' '+it.name:it.code}
+function isDark(){var t=document.documentElement.getAttribute('data-theme');if(t==='dark')return true;if(t==='light')return false;return !!(window.matchMedia&&matchMedia('(prefers-color-scheme:dark)').matches)}
+function cssVar(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim()}
+
+function save(){try{localStorage.setItem(KEY,JSON.stringify(st))}catch(e){}}
+function saveData(){
+  try{
+    if(!st.keep||!Object.keys(FIN).length){localStorage.removeItem(KEY_DATA);return}
+    localStorage.setItem(KEY_DATA,JSON.stringify({sample:isSample,fin:FIN}));
+  }catch(e){
+    try{localStorage.removeItem(KEY_DATA)}catch(e2){}
+    toast('データが大きく、この端末に覚えさせられませんでした');
+  }
+}
+function load(){
+  try{var raw=localStorage.getItem(KEY);if(raw){var d=JSON.parse(raw);if(d&&typeof d==='object')for(var k in st)if(d[k]!==undefined&&typeof d[k]===typeof st[k])st[k]=d[k]}}catch(e){}
+  try{
+    var rd=st.keep&&localStorage.getItem(KEY_DATA);
+    if(rd){
+      var o=JSON.parse(rd);
+      if(o&&o.fin){
+        Object.keys(o.fin).forEach(function(c){
+          var s=o.fin[c];if(!s||!Array.isArray(s.d)||!Array.isArray(s.v))return;
+          RAW[c]={name:String(s.name||''),m:{}};
+          for(var i=0;i<s.d.length;i++)RAW[c].m[s.d[i]]=s.v[i];
+        });
+        FIN=Core.finalize(RAW);isSample=!!o.sample;
+        if(Object.keys(FIN).length)fileMsgs=['この端末に覚えさせていたデータを読み込みました'];
+      }
+    }
+  }catch(e){}
+}
+
+/* ---------- 期間 ---------- */
+function addMonths(iso,k){
+  var p=iso.split('-').map(Number),dt=new Date(Date.UTC(p[0],p[1]-1+k,1));
+  var last=new Date(Date.UTC(dt.getUTCFullYear(),dt.getUTCMonth()+1,0)).getUTCDate();
+  dt.setUTCDate(Math.min(p[2],last));
+  return dt.toISOString().slice(0,10);
+}
+function dataRange(){
+  var codes=Core.extractCodes(st.codes).filter(function(c){return FIN[c]&&FIN[c].d.length});
+  if(!codes.length)codes=Object.keys(FIN);
+  var lo=null,hi=null;
+  codes.forEach(function(c){var d=FIN[c].d;if(!d.length)return;if(lo===null||d[0]<lo)lo=d[0];if(hi===null||d[d.length-1]>hi)hi=d[d.length-1]});
+  return lo===null?null:[lo,hi];
+}
+function applyPreset(){
+  if(!st.preset)return;
+  var r=dataRange(),end=r?r[1]:today(),start;
+  if(st.preset==='all')start=r?r[0]:addMonths(end,-12);
+  else if(st.preset==='ytd')start=end.slice(0,4)+'-01-01';
+  else start=addMonths(end,{'1m':-1,'3m':-3,'6m':-6,'1y':-12}[st.preset]||-12);
+  st.start=start;st.end=end;
+}
+
+/* ---------- 読み込み ---------- */
+function ingest(parsed,name,enc){
+  if(parsed.error){fileMsgs.push('× '+name+'：'+parsed.error);return false}
+  if(!parsed.recs.length){fileMsgs.push('× '+name+'：読める行がありませんでした');return false}
+  var codes={};parsed.recs.forEach(function(x){codes[x[1]]=1});
+  Core.addRecs(RAW,parsed);
+  var f={long:'縦持ち',wide:'横持ち（コードごとに日付・終値の2列）',pivot:'横持ち（1列目が日付）'}[parsed.format]||parsed.format;
+  fileMsgs.push('○ '+name+'：'+f+'／'+Object.keys(codes).length+'銘柄・'+parsed.recs.length.toLocaleString('ja-JP')+'件'+(enc?'／'+enc:'')+(parsed.closeCol?'／終値の列「'+parsed.closeCol+'」':'')+(parsed.skipped?'／読めなかった行 '+parsed.skipped:''));
+  return true;
+}
+function readFiles(files){
+  var list=Array.prototype.slice.call(files||[]);
+  if(!list.length)return;
+  if(isSample){RAW={};isSample=false}
+  fileMsgs=[];
+  var left=list.length;
+  list.forEach(function(f){
+    var fr=new FileReader();
+    fr.onload=function(){
+      try{var dec=Core.decode(fr.result);ingest(Core.parseTable(Core.parseCSV(dec.text),f.name),f.name,dec.enc)}
+      catch(e){fileMsgs.push('× '+f.name+'：読み込めませんでした')}
+      done();
+    };
+    fr.onerror=function(){fileMsgs.push('× '+f.name+'：読み込めませんでした');done()};
+    fr.readAsArrayBuffer(f);
+  });
+  function done(){
+    if(--left>0)return;
+    FIN=Core.finalize(RAW);
+    if(st.preset||!st.start||!st.end){if(!st.preset)st.preset='1y';applyPreset()}
+    save();saveData();syncInputs();render();
+  }
+}
+function loadSample(){
+  var cur=Core.extractCodes(st.codes);
+  if((Object.keys(FIN).length&&!isSample)||(cur.length&&cur.join()!=='9Z01,9Z02,9Z03,9Z04,9Z05')){
+    if(!window.confirm('今の銘柄コードと読み込んだデータを、サンプル（作りものの数字）に置きかえます。よろしいですか？'))return;
+  }
+  RAW={};Core.addRecs(RAW,Core.makeSample());FIN=Core.finalize(RAW);isSample=true;
+  fileMsgs=['○ サンプル（作りものの数字）を入れました。実在の銘柄・株価ではありません'];
+  st.codes='9Z01\n9Z02\n9Z03\n9Z04\n9Z05';st.preset='all';applyPreset();hidden={};
+  save();saveData();syncInputs();render();
+}
+function clearData(){
+  RAW={};FIN={};isSample=false;fileMsgs=[];hidden={};
+  saveData();render();toast('読み込んだデータを消しました');
+}
+
+/* ---------- 入力欄と状態をそろえる ---------- */
+function syncInputs(){
+  $('codes').value=st.codes;$('start').value=st.start;$('end').value=st.end;
+  $('shares').value=st.shares;$('amount').value=st.amount;$('round').value=st.round;$('keep').checked=st.keep;
+  Array.prototype.forEach.call($('presets').children,function(b){b.classList.toggle('on',b.getAttribute('data-p')===st.preset)});
+  $('buyShares').classList.toggle('on',st.buy==='shares');$('buyAmount').classList.toggle('on',st.buy==='amount');
+  $('sharesBox').hidden=st.buy!=='shares';$('amountBox').hidden=st.buy!=='amount';
+  $('modeIndex').classList.toggle('on',st.mode==='index');$('modeRaw').classList.toggle('on',st.mode==='raw');
+  $('themeBtn').textContent='配色：'+({auto:'自動',light:'明るい',dark:'暗い'}[st.theme]);
+  if(st.theme==='auto')document.documentElement.removeAttribute('data-theme');else document.documentElement.setAttribute('data-theme',st.theme);
+  if(st.pl!=='jp')st.pl='std';
+  $('plBtn').textContent='損益の色：'+(st.pl==='jp'?'上げ赤・下げ緑':'上げ緑・下げ赤');
+  if(st.pl==='jp')document.documentElement.setAttribute('data-pl','jp');else document.documentElement.removeAttribute('data-pl');
+}
+
+/* ---------- グラフ ---------- */
+function niceStep(x){var p=Math.pow(10,Math.floor(Math.log(x)/Math.LN10)),f=x/p;return (f<=1?1:f<=2?2:f<=2.5?2.5:f<=5?5:10)*p}
+function axisFmt(hi,kind){
+  if(kind==='yen'){
+    if(hi>=1e8)return function(v){return (v/1e8).toLocaleString('ja-JP',{maximumFractionDigits:2})+'億'};
+    if(hi>=1e5)return function(v){return (v/1e4).toLocaleString('ja-JP',{maximumFractionDigits:2})+'万'};
+  }
+  return function(v){return v.toLocaleString('ja-JP',{maximumFractionDigits:2})};
+}
+function paint(ctx,X,Y,W,H,cfg,hover){
+  var ink=cssVar('--ink'),sub=cssVar('--sub'),line=cssVar('--line'),card=cssVar('--card');
+  var vis=cfg.series.filter(function(s){return !s.hidden}),n=cfg.dates.length,mn=Infinity,mx=-Infinity;
+  vis.forEach(function(s){for(var i=0;i<n;i++){var v=s.vals[i];if(v!==null&&v!==undefined){if(v<mn)mn=v;if(v>mx)mx=v}}});
+  ctx.font='12px -apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif';
+  if(!isFinite(mn)){ctx.fillStyle=sub;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('表示する線がありません（凡例を押すと表示できます）',X+W/2,Y+H/2);return null}
+  if(cfg.base!==null&&cfg.base!==undefined){if(cfg.base<mn)mn=cfg.base;if(cfg.base>mx)mx=cfg.base}
+  if(mn===mx){mn=mn*0.99;mx=mx*1.01+1e-9}
+  var step=niceStep((mx-mn)/5),lo=Math.floor(mn/step)*step,hi=Math.ceil(mx/step)*step,ticks=[];
+  for(var t=lo;t<=hi+step*1e-6;t+=step)ticks.push(Math.abs(t)<step*1e-9?0:t);
+  var af=axisFmt(hi,cfg.kind),lw=0;
+  ticks.forEach(function(v){lw=Math.max(lw,ctx.measureText(af(v)).width)});
+  var l=X+lw+10,r=X+W-14,tp=Y+10,b=Y+H-24,pw=r-l,ph=b-tp;
+  function xx(i){return n>1?l+pw*i/(n-1):l+pw/2}
+  function yy(v){return b-ph*(v-lo)/(hi-lo)}
+  ctx.lineWidth=1;ctx.setLineDash([]);
+  ctx.textAlign='right';ctx.textBaseline='middle';
+  ticks.forEach(function(v){
+    var y=Math.round(yy(v))+0.5;
+    ctx.strokeStyle=line;ctx.beginPath();ctx.moveTo(l,y);ctx.lineTo(r,y);ctx.stroke();
+    ctx.fillStyle=sub;ctx.fillText(af(v),l-6,y);
+  });
+  // 横軸の日付
+  var cnt=Math.max(2,Math.min(n,Math.floor(pw/120)+1));
+  ctx.textBaseline='top';ctx.fillStyle=sub;
+  if(n===1){ctx.textAlign='center';ctx.fillText(sl(cfg.dates[0]),xx(0),b+7)}
+  else for(var k=0;k<cnt;k++){
+    var i=Math.round(k*(n-1)/(cnt-1));
+    ctx.textAlign=k===0?'left':k===cnt-1?'right':'center';
+    ctx.fillText(sl(cfg.dates[i]),xx(i),b+7);
+  }
+  if(cfg.base!==null&&cfg.base!==undefined){
+    var by=Math.round(yy(cfg.base))+0.5;
+    ctx.strokeStyle=sub;ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(l,by);ctx.lineTo(r,by);ctx.stroke();ctx.setLineDash([]);
+  }
+  ctx.lineJoin='round';ctx.lineCap='round';
+  vis.forEach(function(s){
+    ctx.strokeStyle=s.color;ctx.fillStyle=s.color;ctx.lineWidth=s.width||2;ctx.setLineDash(s.dash||[]);
+    var open=false,count=0,lastI=-1;
+    ctx.beginPath();
+    for(var i=0;i<n;i++){
+      var v=s.vals[i];
+      if(v===null||v===undefined){open=false;continue}
+      if(open)ctx.lineTo(xx(i),yy(v));else{ctx.moveTo(xx(i),yy(v));open=true}
+      count++;lastI=i;
+    }
+    ctx.stroke();ctx.setLineDash([]);
+    if(count===1){ctx.beginPath();ctx.arc(xx(lastI),yy(s.vals[lastI]),3.5,0,Math.PI*2);ctx.fill()}
+  });
+  if(hover!==null&&hover!==undefined&&hover>=0&&hover<n){
+    var hx=Math.round(xx(hover))+0.5;
+    ctx.strokeStyle=sub;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(hx,tp);ctx.lineTo(hx,b);ctx.stroke();
+    vis.forEach(function(s){
+      var v=s.vals[hover];if(v===null||v===undefined)return;
+      ctx.beginPath();ctx.arc(xx(hover),yy(v),4.5,0,Math.PI*2);ctx.fillStyle=s.color;ctx.fill();
+      ctx.lineWidth=2;ctx.strokeStyle=card;ctx.stroke();
+    });
+  }
+  return {l:l,r:r,n:n,xx:xx};
+}
+function drawChart(id){
+  var ch=charts[id];if(!ch||!ch.cfg)return;
+  var cv=ch.cv,wrap=cv.parentNode,w=wrap.clientWidth,h=wrap.clientHeight,dpr=window.devicePixelRatio||1;
+  if(!w||!h)return;
+  if(cv.width!==Math.round(w*dpr)||cv.height!==Math.round(h*dpr)){cv.width=Math.round(w*dpr);cv.height=Math.round(h*dpr)}
+  var ctx=cv.getContext('2d');
+  ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);
+  ch.geom=paint(ctx,0,0,w,h,ch.cfg,ch.hover);
+}
+function setupChart(id,cvId,tipId){
+  var cv=$(cvId),tip=$(tipId),ch={cv:cv,tip:tip,cfg:null,hover:null,geom:null,raf:0};
+  charts[id]=ch;
+  function move(ev){
+    if(!ch.geom||!ch.cfg)return;
+    var rect=cv.getBoundingClientRect(),mx=ev.clientX-rect.left,g=ch.geom;
+    var i=g.n>1?Math.round((mx-g.l)/(g.r-g.l)*(g.n-1)):0;
+    i=Math.max(0,Math.min(g.n-1,i));
+    if(i!==ch.hover){ch.hover=i;if(!ch.raf)ch.raf=requestAnimationFrame(function(){ch.raf=0;drawChart(id)})}
+    var rows=ch.cfg.series.filter(function(s){return !s.hidden&&s.vals[i]!==null&&s.vals[i]!==undefined}).map(function(s){return {s:s,v:s.vals[i]}});
+    rows.sort(function(a,b){return (b.s.top?1:0)-(a.s.top?1:0)||b.v-a.v});
+    var more=rows.length>14?rows.length-14:0;if(more)rows=rows.slice(0,14);
+    var html='<b>'+esc(sl(ch.cfg.dates[i]))+'</b>'+rows.map(function(x){return '<div class="tr"><i style="background:'+x.s.color+'"></i><span>'+esc(x.s.label)+'</span><em>'+esc(ch.cfg.tipFmt(x.v,x.s,i))+'</em></div>'}).join('')+(more?'<div class="sub">ほか '+more+' 本</div>':'');
+    tip.innerHTML=html;tip.style.display='block';
+    var tw=tip.offsetWidth,th=tip.offsetHeight,x=g.xx(i),W=rect.width,H=rect.height;
+    var left=x+12+tw>W?x-12-tw:x+12;left=Math.max(0,Math.min(W-tw,left));
+    var top=Math.max(0,Math.min(H-th,(ev.clientY-rect.top)-th/2));
+    tip.style.left=left+'px';tip.style.top=top+'px';
+  }
+  function leave(){ch.hover=null;tip.style.display='none';drawChart(id)}
+  cv.addEventListener('pointermove',move);cv.addEventListener('pointerdown',move);
+  cv.addEventListener('pointerleave',leave);cv.addEventListener('pointercancel',leave);
+  return ch;
+}
+function swatch(s){
+  return '<svg width="22" height="10" viewBox="0 0 22 10" aria-hidden="true"><line x1="1" y1="5" x2="21" y2="5" stroke="'+s.color+'" stroke-width="'+(s.width||2)+'" stroke-linecap="round"'+(s.dash&&s.dash.length?' stroke-dasharray="'+s.dash.join(' ')+'"':'')+'/></svg>';
+}
+function periodText(){return RES&&RES.dates.length?sl(RES.dates[0])+' 〜 '+sl(RES.dates[RES.dates.length-1]):''}
+function exportPNG(id,title){
+  var ch=charts[id];if(!ch||!ch.cfg){toast('保存するグラフがありません');return}
+  var W=1200,H=675,sc=2,c=document.createElement('canvas');c.width=W*sc;c.height=H*sc;
+  var ctx=c.getContext('2d');ctx.scale(sc,sc);
+  var font='-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif';
+  ctx.fillStyle=cssVar('--card');ctx.fillRect(0,0,W,H);
+  ctx.fillStyle=cssVar('--ink');ctx.font='bold 20px '+font;ctx.textBaseline='top';ctx.textAlign='left';
+  ctx.fillText(title,24,20);
+  ctx.font='13px '+font;ctx.fillStyle=cssVar('--sub');
+  ctx.fillText(periodText()+(isSample?'　サンプル（作りものの数字。実在の銘柄・株価ではありません）':''),24,50);
+  var x=24,y=78;ctx.textBaseline='middle';
+  ch.cfg.series.filter(function(s){return !s.hidden}).forEach(function(s){
+    var tw=ctx.measureText(s.label).width;
+    if(x+34+tw>W-24){x=24;y+=22}
+    if(y>144)return;
+    ctx.strokeStyle=s.color;ctx.lineWidth=s.width||2;ctx.setLineDash(s.dash||[]);ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+24,y);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle=cssVar('--ink');ctx.fillText(s.label,x+30,y);x+=30+tw+18;
+  });
+  var top=y+18;
+  paint(ctx,24,top,W-48,H-top-40,ch.cfg,null);
+  ctx.font='12px '+font;ctx.fillStyle=cssVar('--sub');ctx.textAlign='left';ctx.textBaseline='bottom';
+  ctx.fillText('手数料・税金・配当は入れていません。株式分割は、データが調整済みでなければ正しい数字になりません。売買の助言・推奨ではありません。',24,H-12);
+  c.toBlob(function(blob){download(blob,'kabu-chart-'+id+'-'+(RES?RES.dates[0]+'_'+RES.dates[RES.dates.length-1]:'')+(isSample?'-sample':'')+'.png')},'image/png');
+}
+function download(blob,name){
+  var a=document.createElement('a'),url=URL.createObjectURL(blob);
+  a.href=url;a.download=name;document.body.appendChild(a);a.click();
+  setTimeout(function(){document.body.removeChild(a);URL.revokeObjectURL(url)},500);
+}
+
+/* ---------- 表示 ---------- */
+function td(l,html,c){return '<td data-l="'+l+'"'+(c?' class="'+c+'"':'')+'>'+html+'</td>'}
+function render(){
+  var codes=Core.extractCodes(st.codes),hasData=Object.keys(FIN).length>0;
+  $('sampleBanner').hidden=!isSample;
+  // 読み込みの状況
+  var dm=fileMsgs.map(function(m){return '<div'+(m.charAt(0)==='×'?' class="err"':'')+'>'+esc(m)+'</div>'}).join('');
+  if(hasData){
+    var all=Object.keys(FIN),lo=null,hi=null,cnt=0;
+    all.forEach(function(c){var d=FIN[c].d;cnt+=d.length;if(lo===null||d[0]<lo)lo=d[0];if(hi===null||d[d.length-1]>hi)hi=d[d.length-1]});
+    dm+='<div class="sub">今あるデータ：'+all.length+'銘柄・'+cnt.toLocaleString('ja-JP')+'件（'+sl(lo)+' 〜 '+sl(hi)+'）'+(isSample?'／サンプル（作りものの数字）':'')+'</div>';
+  }else dm+='<div class="sub">まだ読み込んでいません。</div>';
+  $('dataMsg').innerHTML=dm;
+  $('clearBtn').hidden=!hasData;$('allCodesBtn').hidden=!hasData;
+
+  // 期間の確認
+  var perr='';
+  if(st.start&&st.end&&st.start>st.end)perr='開始日が終了日より後になっています。';
+  else if(!st.start||!st.end)perr=hasData?'開始日と終了日を入れてください。':'';
+  $('periodMsg').textContent=perr;
+
+  var res=null;
+  if(hasData&&codes.length&&!perr){
+    res=Core.compute(FIN,codes,st.start,st.end,{buy:st.buy,shares:Math.max(1,Math.floor(Number(st.shares))||100),amount:Math.max(1,Number(st.amount)||1000000),round:st.round});
+  }
+  RES=res&&res.items.length?res:null;
+
+  // 拾えたコード
+  var chips=codes.map(function(c){
+    var k='ok',t='';
+    if(hasData){
+      if(!FIN[c]){k='bad';t='（CSV にデータなし）'}
+      else if(res&&res.outside.indexOf(c)>=0){k='warn';t='（この期間にデータなし）'}
+    }else k='';
+    return '<span class="badge '+k+'">'+esc(c)+t+'</span>';
+  }).join('');
+  $('chips').innerHTML=chips;
+  var cm='';
+  if(codes.length){
+    cm='<div class="sub">拾えたコード：'+codes.length+'件</div>';
+    if(hasData){
+      var miss=codes.filter(function(c){return !FIN[c]});
+      if(miss.length)cm+='<div class="err">CSV にデータが無かったコード（'+miss.length+'件）：'+esc(miss.join('、'))+'</div>';
+      if(res&&res.outside.length)cm+='<div>この期間にデータが無いコード（'+res.outside.length+'件）：'+esc(res.outside.join('、'))+'</div>';
+    }
+  }else if(st.codes.trim())cm='<div class="err">4けたの銘柄コードを拾えませんでした。</div>';
+  $('codeMsg').innerHTML=cm;
+
+  if(!RES){
+    $('resultBox').hidden=true;$('emptyCard').hidden=false;
+    var et='株価の CSV を読み込み、銘柄コードを入れると、ここにグラフと損益が出ます。<br>まず動きを見たいときは「サンプルで試す」を押してください。';
+    if(hasData&&!codes.length)et='銘柄コードを入れてください（「CSV にあるコードをすべて入れる」も使えます）。';
+    else if(hasData&&perr)et=esc(perr);
+    else if(hasData&&codes.length)et='入れたコードのデータが、この期間にはありません。コードか期間を見直してください。';
+    $('emptyText').innerHTML=et;
+    return;
+  }
+  $('emptyCard').hidden=true;$('resultBox').hidden=false;
+  var pal=isDark()?DARK:LIGHT,ink=cssVar('--ink');
+  res.items.forEach(function(it,i){it.color=pal[i%8];it.dash=DASH[Math.floor(i/8)%DASH.length]});
+
+  // 重ねたグラフ
+  var idx=st.mode==='index';
+  var series=res.items.map(function(it){return {key:it.code,label:label(it),color:it.color,dash:it.dash,width:2,vals:idx?it.idx:it.fill,raw:it.fill,hidden:!!hidden[it.code]}});
+  if(idx&&res.totalIdx&&res.items.length>1)series.push({key:'__total',label:'合計',color:ink,dash:[],width:3.5,vals:res.totalIdx,raw:res.total,top:true,hidden:!!hidden.__total});
+  charts.over.cfg={dates:res.dates,series:series,base:idx?100:null,kind:idx?'index':'price',
+    tipFmt:function(v,s,i){
+      if(!idx)return fmtPx(v)+'円';
+      return v.toFixed(1)+(s.key==='__total'?'（'+fmtInt(s.raw[i])+'円）':'（'+fmtPx(s.raw[i])+'円）');
+    }};
+  $('h2over').textContent=idx?'重ねたグラフ（最初の日を100とした動き）':'重ねたグラフ（株価そのまま・円）';
+  $('legend').innerHTML=series.map(function(s){return '<button data-k="'+esc(s.key)+'" aria-pressed="'+(!s.hidden)+'" title="押すと表示・非表示を切りかえます">'+swatch(s)+'<span>'+esc(s.label)+'</span></button>'}).join('');
+  $('overNote').textContent=(idx?'それぞれの銘柄の、期間の中の最初の取引日の終値を100としています。太い線は合計（全銘柄を持っていた場合）です。':'「株価そのまま」では、けたの違う銘柄は見くらべにくくなります。合計の線は「最初の日を100とした動き」で出ます。')+(res.items.length>8?' 9本目からは線の種類（点線など）で見分けます。':'');
+  // 合計のグラフ
+  charts.total.cfg={dates:res.dates,series:[{key:'t',label:'合計の評価額',color:pal[0],dash:[],width:2.5,vals:res.total,top:true}],base:res.cost>0?res.cost:null,kind:'yen',
+    tipFmt:function(v){return fmtInt(v)+'円'+(res.cost>0?'（'+fmtPct(v/res.cost-1)+'）':'')}};
+  charts.over.hover=null;charts.total.hover=null;$('tip1').style.display='none';$('tip2').style.display='none';
+  drawChart('over');drawChart('total');
+
+  // まとめ
+  var buyText=st.buy==='shares'?'各銘柄 '+fmtSh(res.items[0].shares)+'株ずつ':'各銘柄 '+fmtInt(Math.max(1,Number(st.amount)||1000000))+'円ずつ（'+(st.round==='lot'?'100株単位に切り捨て':'株数は小数')+'）';
+  $('sumLead').textContent=periodText()+'／'+res.items.length+'銘柄／'+buyText;
+  var m=res.mdd,t=[];
+  t.push('<div><span>買った額の合計</span><b>'+fmtInt(res.cost)+'円</b></div>');
+  t.push('<div><span>評価額の合計</span><b>'+fmtInt(res.value)+'円</b></div>');
+  t.push('<div><span>合計の損益</span><b class="'+cls(res.pl)+'">'+fmtSigned(res.pl)+'円</b><small>'+fmtPct(res.rate)+'</small></div>');
+  t.push('<div><span>いちばん良い銘柄</span><b>'+esc(res.best.code)+'</b><small>'+esc(res.best.name?res.best.name+'　':'')+fmtPct(res.best.rate)+'</small></div>');
+  t.push('<div><span>いちばん悪い銘柄</span><b>'+esc(res.worst.code)+'</b><small>'+esc(res.worst.name?res.worst.name+'　':'')+fmtPct(res.worst.rate)+'</small></div>');
+  t.push('<div><span>上がった／下がった</span><b>'+res.up+'／'+res.down+'</b><small>銘柄'+(res.flat?'（変わらず '+res.flat+'）':'')+'</small></div>');
+  t.push('<div><span>いちばん大きな下げ幅（合計）</span><b>'+(m.rate<0?fmtPct(m.rate):'下げなし')+'</b><small>'+(m.rate<0?sl(m.peakDate)+' の '+fmtInt(m.peakVal)+'円 → '+sl(m.troughDate)+' の '+fmtInt(m.troughVal)+'円':'期間中、合計が前の高値を下回った日はありません')+'</small></div>');
+  t.push('<div><span>合計がいちばん高かった日</span><b>'+sl(res.hi.date)+'</b><small>'+fmtInt(res.hi.val)+'円</small></div>');
+  t.push('<div><span>合計がいちばん低かった日</span><b>'+sl(res.lo.date)+'</b><small>'+fmtInt(res.lo.val)+'円</small></div>');
+  $('tiles').innerHTML=t.join('');
+  var notes=[];
+  if(res.cost<=0)notes.push('どの銘柄も0株になりました（1銘柄あたりの金額が、100株を買う額に足りません）。金額を増やすか、「株数を小数で計算する」を選んでください。');
+  else if(res.items.some(function(it){return it.shares===0}))notes.push('0株になった銘柄があります（1銘柄あたりの金額が、100株を買う額に足りません）。損益率は株価の動きで出しています。');
+  if(res.late.length)notes.push('最初の取引日がほかより遅い銘柄：'+res.late.map(function(it){return it.code+'（'+sl(it.buyDate)+'）'}).join('、')+'。その日の終値で買い、それまでは合計に「買う額」をそのまま入れています。');
+  if(res.early.length)notes.push('最後の取引日がほかより早い銘柄：'+res.early.map(function(it){return it.code+'（'+sl(it.endDate)+'）'}).join('、')+'。その日の終値で評価し、合計ではその値のまま数えています。');
+  if(res.gappy.length)notes.push('途中の日が欠けている銘柄：'+res.gappy.map(function(it){return it.code+'（'+it.gap+'日）'}).join('、')+'。欠けた日は直前の終値で埋めています。');
+  $('alignNote').hidden=!notes.length;
+  $('alignNote').innerHTML='<ul>'+notes.map(function(x){return '<li>'+esc(x)+'</li>'}).join('')+'</ul>';
+
+  // 表
+  var h='<thead><tr><th>銘柄</th><th>買値</th><th>終わりの値</th><th>株数</th><th>買った額</th><th>評価額</th><th>損益額</th><th>損益率</th></tr></thead><tbody>';
+  res.items.forEach(function(it){
+    h+='<tr>'+td('銘柄','<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:'+it.color+';margin-right:6px"></span>'+esc(it.code)+(it.name?'<small>'+esc(it.name)+'</small>':''))
+      +td('買値',fmtPx(it.buyPx)+'<small>'+sl(it.buyDate)+'</small>')
+      +td('終わりの値',fmtPx(it.endPx)+'<small>'+sl(it.endDate)+'</small>')
+      +td('株数',fmtSh(it.shares))+td('買った額',fmtInt(it.cost))+td('評価額',fmtInt(it.value))
+      +td('損益額',fmtSigned(it.pl),cls(it.pl))+td('損益率',fmtPct(it.rate),cls(it.rate))+'</tr>';
+  });
+  h+='<tr class="total">'+td('','合計（'+res.items.length+'銘柄）')+td('買値','—')+td('終わりの値','—')+td('株数','—')+td('買った額',fmtInt(res.cost))+td('評価額',fmtInt(res.value))+td('損益額',fmtSigned(res.pl),cls(res.pl))+td('損益率',fmtPct(res.rate),cls(res.rate))+'</tr></tbody>';
+  $('tbl').innerHTML=h;
+}
+function exportCSV(){
+  if(!RES){toast('保存する表がありません');return}
+  function q(v){v=String(v);return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}
+  function r4(n){return Math.round(n*10000)/10000}
+  var rows=[['コード','銘柄名','買った日','買値','評価した日','終わりの値','株数','買った額','評価額','損益額','損益率(%)']];
+  RES.items.forEach(function(it){rows.push([it.code,it.name,it.buyDate,it.buyPx,it.endDate,it.endPx,r4(it.shares),Math.round(it.cost),Math.round(it.value),Math.round(it.pl),(it.rate*100).toFixed(2)])});
+  rows.push(['合計','','','','','','',Math.round(RES.cost),Math.round(RES.value),Math.round(RES.pl),RES.rate===null?'':(RES.rate*100).toFixed(2)]);
+  if(isSample)rows.push(['※サンプル（作りものの数字）。実在の銘柄・株価ではありません']);
+  rows.push(['※手数料・税金・配当は入れていません。株式分割は、データが調整済みでなければ正しい数字になりません。売買の助言・推奨ではありません']);
+  var text='﻿'+rows.map(function(r){return r.map(q).join(',')}).join('\r\n')+'\r\n';
+  download(new Blob([text],{type:'text/csv'}),'kabu-soneki-'+RES.dates[0]+'_'+RES.dates[RES.dates.length-1]+(isSample?'-sample':'')+'.csv');
+}
+
+/* ---------- 操作 ---------- */
+var deb=0;
+function later(){clearTimeout(deb);deb=setTimeout(function(){save();render()},200)}
+function init(){
+  load();
+  setupChart('over','cv1','tip1');setupChart('total','cv2','tip2');
+  if(Object.keys(FIN).length&&st.preset)applyPreset();
+  syncInputs();render();
+
+  $('fileBtn').onclick=function(){$('file').click()};
+  $('file').onchange=function(){readFiles(this.files);this.value=''};
+  var drop=$('dataCard');
+  ['dragenter','dragover'].forEach(function(n){drop.addEventListener(n,function(e){e.preventDefault();$('drop').classList.add('over')})});
+  ['dragleave','drop'].forEach(function(n){drop.addEventListener(n,function(e){e.preventDefault();$('drop').classList.remove('over')})});
+  drop.addEventListener('drop',function(e){if(e.dataTransfer&&e.dataTransfer.files)readFiles(e.dataTransfer.files)});
+  ['dragover','drop'].forEach(function(n){window.addEventListener(n,function(e){e.preventDefault()})});
+  $('sampleBtn').onclick=loadSample;
+  $('clearBtn').onclick=clearData;
+  $('keep').onchange=function(){st.keep=this.checked;save();saveData();toast(st.keep?'読み込んだ中身を、この端末に覚えさせます':'読み込んだ中身は覚えさせません（保存していた分も消しました）')};
+  $('codes').oninput=function(){st.codes=this.value;later()};
+  $('allCodesBtn').onclick=function(){st.codes=Object.keys(FIN).join('\n');if(st.preset)applyPreset();hidden={};save();syncInputs();render()};
+  $('start').onchange=function(){st.start=this.value;st.preset='';save();syncInputs();render()};
+  $('end').onchange=function(){st.end=this.value;st.preset='';save();syncInputs();render()};
+  $('presets').onclick=function(e){var p=e.target.getAttribute&&e.target.getAttribute('data-p');if(!p)return;st.preset=p;applyPreset();save();syncInputs();render()};
+  $('buyShares').onclick=function(){st.buy='shares';save();syncInputs();render()};
+  $('buyAmount').onclick=function(){st.buy='amount';save();syncInputs();render()};
+  $('shares').oninput=function(){var n=Math.floor(Number(this.value));if(n>0){st.shares=n;later()}};
+  $('amount').oninput=function(){var n=Number(this.value);if(n>0){st.amount=n;later()}};
+  $('round').onchange=function(){st.round=this.value;save();render()};
+  $('modeIndex').onclick=function(){st.mode='index';save();syncInputs();render()};
+  $('modeRaw').onclick=function(){st.mode='raw';save();syncInputs();render()};
+  $('legend').onclick=function(e){var b=e.target.closest?e.target.closest('button'):null;if(!b)return;var k=b.getAttribute('data-k');hidden[k]=!hidden[k];render()};
+  $('plBtn').onclick=function(){st.pl=st.pl==='jp'?'std':'jp';save();syncInputs()};
+  $('themeBtn').onclick=function(){st.theme={auto:'light',light:'dark',dark:'auto'}[st.theme];save();syncInputs();render()};
+  $('png1').onclick=function(){exportPNG('over',$('h2over').textContent)};
+  $('png2').onclick=function(){exportPNG('total','合計の評価額（全銘柄を持っていた場合）')};
+  $('csvBtn').onclick=exportCSV;
+  if(window.matchMedia){var mq=matchMedia('(prefers-color-scheme:dark)'),f=function(){render()};if(mq.addEventListener)mq.addEventListener('change',f);else if(mq.addListener)mq.addListener(f)}
+  if(window.ResizeObserver){var ro=new ResizeObserver(function(){drawChart('over');drawChart('total')});ro.observe($('wrap1'));ro.observe($('wrap2'))}
+  else window.addEventListener('resize',function(){drawChart('over');drawChart('total')});
+}
+init();
+})();
+</script>
+</body>
+</html>
